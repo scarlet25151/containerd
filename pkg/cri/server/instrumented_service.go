@@ -1605,7 +1605,7 @@ func (in *instrumentedService) CheckpointContainer(ctx context.Context, r *runti
 	if err := in.checkInitialized(); err != nil {
 		return nil, err
 	}
-
+	log.G(ctx).Debugf("CheckpointContainer for %q", r.GetContainerId())
 	defer func() {
 		if err != nil {
 			log.G(ctx).WithError(err).Errorf("CheckpointContainer failed, error")
@@ -1614,7 +1614,7 @@ func (in *instrumentedService) CheckpointContainer(ctx context.Context, r *runti
 		}
 	}()
 
-	res, err = in.c.CheckpointContainer(ctx, r)
+	res, err = in.c.CheckpointContainer(ctrdutil.WithNamespace(ctx), r)
 	return res, errdefs.ToGRPC(err)
 }
 
