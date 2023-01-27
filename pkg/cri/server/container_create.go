@@ -215,7 +215,9 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 		log.G(ctx).Infof("Logging will be disabled due to empty log paths for sandbox (%q) or container (%q)",
 			sandboxConfig.GetLogDirectory(), config.GetLogPath())
 	}
+	createContainerMountTimer.WithValues(ociRuntime.Type).UpdateSince(start)
 
+	createContainerIOStart := time.Now()
 	containerIO, err := cio.NewContainerIO(id,
 		cio.WithNewFIFOs(volatileContainerRootDir, config.GetTty(), config.GetStdin()))
 	if err != nil {
@@ -228,7 +230,7 @@ func (c *criService) CreateContainer(ctx context.Context, r *runtime.CreateConta
 			}
 		}
 	}()
-
+	createContainerIOTimer.WithValues(ociRuntime.Type).UpdateSince(createContainerIOStart)
 	specOpts, err := c.containerSpecOpts(config, &image.ImageSpec.Config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get container spec opts: %w", err)
