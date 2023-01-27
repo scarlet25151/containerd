@@ -35,6 +35,14 @@ var (
 	containerStopTimer       metrics.LabeledTimer
 	containerStartTimer      metrics.LabeledTimer
 	containerCheckpointTimer metrics.LabeledTimer
+
+	ensureSandboxImageTimer     metrics.LabeledTimer
+	createSandboxContainerTimer metrics.LabeledTimer
+	createRunCTaskTimer         metrics.LabeledTimer
+	startRunCTaskTimer          metrics.LabeledTimer
+	createContainerMountTimer   metrics.LabeledTimer
+	createContainerIOTimer      metrics.LabeledTimer
+	startContainerIOTimer       metrics.LabeledTimer
 )
 
 func init() {
@@ -56,5 +64,14 @@ func init() {
 	containerStartTimer = ns.NewLabeledTimer("container_start", "time to start a container", "runtime")
 	containerCheckpointTimer = ns.NewLabeledTimer("container_checkpoint", "time to checkpoint a container", "runtime")
 
+	ensureSandboxImageTimer = ns.NewLabeledTimer("ensure_sandbox_image", "time to ensure the sandbox image", "runtime")
+	createSandboxContainerTimer = ns.NewLabeledTimer("create_sandbox_container", "time to create the sandbox container", "runtime")
+	createRunCTaskTimer = ns.NewLabeledTimer("create_runC_task", "time to create the runC task", "runtime")
+	startRunCTaskTimer = ns.NewLabeledTimer("start_runC_task", "time to start the runC task", "runtime")
+
+	createContainerMountTimer = ns.NewLabeledTimer("create_container_mount", "time to create container mount", "runtime")
+	createContainerIOTimer = ns.NewLabeledTimer("create_container_io", "time to create container io", "runtime")
+
+	startContainerIOTimer = ns.NewLabeledTimer("start_container_io", "time to start container io", "runtime")
 	metrics.Register(ns)
 }

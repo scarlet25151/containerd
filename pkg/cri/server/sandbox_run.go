@@ -102,7 +102,7 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 			State: sandboxstore.StateUnknown,
 		},
 	)
-
+	ensureSandboxStart := time.Now()
 	// Ensure sandbox container image snapshot.
 	image, err := c.ensureImageExists(ctx, c.config.SandboxImage, config)
 	if err != nil {
@@ -112,12 +112,12 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 	if err != nil {
 		return nil, fmt.Errorf("failed to get image from containerd %q: %w", image.ID, err)
 	}
-
 	ociRuntime, err := c.getSandboxRuntime(config, r.GetRuntimeHandler())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get sandbox runtime: %w", err)
 	}
 	log.G(ctx).WithField("podsandboxid", id).Debugf("use OCI runtime %+v", ociRuntime)
+	ensureSandboxImageTimer.WithValues(ociRuntime.Type).UpdateSince(ensureSandboxStart)
 
 	runtimeStart := time.Now()
 	// Create sandbox container.
@@ -176,7 +176,7 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 
 	// Add container into sandbox store in INIT state.
 	sandbox.Container = container
-
+	createSandboxContainerTimer.WithValues(ociRuntime.Type).UpdateSince(runtimeStart)
 	defer func() {
 		// Put the sandbox into sandbox store when the some resource fails to be cleaned.
 		if retErr != nil && cleanupErr != nil {
@@ -337,6 +337,7 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 		taskOpts = append(taskOpts, containerd.WithRuntimePath(ociRuntime.Path))
 	}
 	// We don't need stdio for sandbox container.
+	createRunCTaskStart := time.Now()
 	task, err := container.NewTask(ctx, containerdio.NullIO, taskOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create containerd task: %w", err)
@@ -352,7 +353,7 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 			}
 		}
 	}()
-
+	createRunCTaskTimer.WithValues(ociRuntime.Type).UpdateSince(createRunCTaskStart)
 	// wait is a long running background request, no timeout needed.
 	exitCh, err := task.Wait(ctrdutil.NamespacedContext())
 	if err != nil {
@@ -372,11 +373,11 @@ func (c *criService) RunPodSandbox(ctx context.Context, r *runtime.RunPodSandbox
 			return nil, fmt.Errorf("nri invoke: %w", err)
 		}
 	}
-
+	startRunCTaskStart := time.Now()
 	if err := task.Start(ctx); err != nil {
 		return nil, fmt.Errorf("failed to start sandbox container task %q: %w", id, err)
 	}
-
+	startRunCTaskTimer.WithValues(ociRuntime.Type).UpdateSince(startRunCTaskStart)
 	if err := sandbox.Status.Update(func(status sandboxstore.Status) (sandboxstore.Status, error) {
 		// Set the pod sandbox as ready after successfully start sandbox container.
 		status.Pid = task.Pid()
